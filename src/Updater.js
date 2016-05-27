@@ -1,7 +1,7 @@
 import { runSaga } from 'redux-saga';
 
 import defaultMacher from './matchers/matcher';
-import { Mount } from './actions';
+import { Mount, Unmount } from './actions';
 
 /**
  * Instantiates and runs Saga
@@ -78,16 +78,16 @@ export default class Updater {
   toReducer() {
     const stateRepository = {};
     const subscribersRepository = {};
+    const taskRepository = {};
 
     return (model = this.initialModel, action) => {
       // Saga instantiation
+      const actionPrefix = action.wrap || '';
       if (action && action.type === Mount && this.saga && action.effectExecutor) {
-        const actionPrefix = action.wrap || '';
-
         action.effectExecutor(dispatch => {
           stateRepository[actionPrefix] = model;
 
-          instantiateSaga(
+          taskRepository[actionPrefix] = instantiateSaga(
             this.saga,
             stateRepository,
             subscribersRepository,
@@ -95,6 +95,11 @@ export default class Updater {
             dispatch
           );
         });
+      }
+
+      const mainTask = taskRepository[actionPrefix];
+      if (action && action.type === Unmount && mainTask) {
+        mainTask.cancel();
       }
 
       if (action) {
